@@ -1,0 +1,19 @@
+[tool.vendoring]
+destination = "vendor/"
+requirements = "vendor/vendors.txt"
+namespace = "kritatwitch.vendor"
+
+protected-files = ["__init__.py", "README.rst", "vendors.txt"]
+patches-dir = "tools/vendoring/patches"
+
+[tool.vendoring.transformations]
+substitute = [
+  # {match = '__import__("twitch")', replace = '__import__("kritatwitch.vendor.twitch")'}
+  { match='from \.extern', replace="from kritatwitch.vendor" }
+]
+drop = [
+  "bin/",
+  "*.so",
+  "typing.*",
+  "*/tests/"
+]

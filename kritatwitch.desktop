@@ -1,0 +1,7 @@
+[Desktop Entry]
+Type=Service
+ServiceTypes=Krita/PythonPlugin
+X-KDE-Library=kritatwitch
+X-Python-2-Compatible=false
+Name=kritatwitch
+Comment=Let twitch chat control Krita!
