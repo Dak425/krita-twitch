@@ -1,10 +1,10 @@
 [tool.vendoring]
-destination = "vendor/"
-requirements = "vendor/vendors.txt"
+destination = "kritatwitch/vendor/"
+requirements = "kritatwitch/vendor/vendors.txt"
 namespace = "kritatwitch.vendor"
 
 protected-files = ["__init__.py", "README.rst", "vendors.txt"]
-patches-dir = "tools/vendoring/patches"
+patches-dir = "kritatwitch/tools/vendoring/patches"
 
 [tool.vendoring.transformations]
 substitute = [
