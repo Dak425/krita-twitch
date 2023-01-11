@@ -1,7 +1,8 @@
 {
-    "twitch": {
-        "channel": "donaldfeury",
-        "client_id": "",
-        "client_secret": ""
-    }
+    "twitch_channel": "donaldfeury",
+    "twitch_chat_command_cooldown": 30,
+    "twitch_chat_enabled": true,
+    "twitch_chat_prefix": "?",
+    "twitch_client_id": "",
+    "twitch_client_secret": ""
 }
