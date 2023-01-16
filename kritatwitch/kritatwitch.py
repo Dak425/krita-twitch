@@ -9,15 +9,25 @@ from kritatwitch.vendor.twitchAPI.types import AuthScope
 from typing import Optional, List, Tuple, Callable
 from datetime import datetime, timedelta
 from pathlib import Path
-from functools import wraps, partial
+from functools import partial
 from math import ceil
 
+import logging
 import asyncio
 
 BASE_PATH = Path(__file__).parent
 DEFAULT_CONFIG_PATH = (BASE_PATH / "config.default.json").resolve()
 CONFIG_PATH = (BASE_PATH / "config.json").resolve()
+LOG_PATH = (BASE_PATH / "kritatwitch.log").resolve()
 USER_SCOPE = [AuthScope.CHAT_READ, AuthScope.CHAT_EDIT]
+
+logging.basicConfig(
+    filename=LOG_PATH,
+    filemode='a',
+    format='%(asctime)s,%(msecs)d %(name)s %(levelname)s %(message)s',
+    datefmt='%H:%M:%S',
+    level=logging.INFO
+)
 
 class KritaTwitch(Extension):
     """
@@ -27,6 +37,11 @@ class KritaTwitch(Extension):
         super().__init__(parent)
         self.config: Config = load_config(CONFIG_PATH)
         
+        # Logging
+        self.logger: logging.Logger = logging.getLogger(__name__)
+        if self.config.get("debug", False):
+            self.logger.setLevel(logging.DEBUG)
+            
         # Event loop for running async code
         self._twitch_loop: asyncio.AbstractEventLoop = asyncio.new_event_loop()
         asyncio.set_event_loop(self._twitch_loop)
@@ -42,6 +57,7 @@ class KritaTwitch(Extension):
         self._authenticate()
         
         # Chat Related
+        self.mods_can_admin: bool = self.config.get("twitch_mods_can_admin", False)
         self.channel: str = self.config["twitch_channel"]
         self.chat_prefix: str = self.config.get("twitch_chat_prefix", "?")
         self.chat_enabled: bool = self.config.get("twitch_chat_enabled", False)
@@ -123,22 +139,35 @@ class KritaTwitch(Extension):
         await self.chat.join_room(self.channel)
         
     async def _run_command_with_admin_guard(self, cmd: ChatCommand, handler: Callable):
-       handler(cmd)
+        badges: Dict[str, str] = cmd.user.badges
+        if self._is_user_broadcaster(cmd):
+            handler(cmd)
+            return
+
+        if self.mods_can_admin and cmd.user.mod:
+            handler(cmd)
+            return
+
+        authorized_user_message = "the broadcaster and mods" if self.mods_can_admin else "the broadcaster"
+        message = f"only {authorized_user_message} can run admin commands"
+        await self._reply_to_command(cmd, message)
         
     async def _run_command_with_cooldown_guard(self, cmd: ChatCommand, handler: Callable):
         on_cooldown, remaining_time = self._user_is_on_cooldown(cmd)
-        if on_cooldown:
-            message = f"You must wait {remaining_time} seconds"
-            await self._reply_to_command(cmd, message) 
+        if not on_cooldown:
+            handler(cmd)
+            self._update_cooldown(cmd)
             return
         
-        handler(cmd)
-
-        self._update_cooldown(cmd)
+        message = f"You must wait {remaining_time} seconds"
+        await self._reply_to_command(cmd, message) 
         
-    # TODO: Don't add to cooldowns if command user is the authenticated user
+    # TODO: Don't add to cooldowns if command user is the broadcaster
     # TODO: Add logic for using different times for different roles (VIP, Mod, etc)
     def _update_cooldown(self, cmd: ChatCommand):
+        if self._is_user_broadcaster(cmd):
+            return
+
         self._cooldowns[cmd.user.name] = datetime.now()
     
     # TODO: Add logic for checking if the user is the authenticated user
@@ -158,11 +187,13 @@ class KritaTwitch(Extension):
 
         time_remaining = ceil(self.cooldown_time - tdelta.total_seconds())
         return True, time_remaining
+
+    def _is_user_broadcaster(cmd: ChatCommand) -> bool:
+        return 'broadcaster' in cmd.user.badges
     
     def _flush_cooldowns_command(self, cmd: ChatCommand):
         self._cooldowns = {}
         
-    # @_run_command_with_guard
     def _switch_color_command(self, cmd: ChatCommand):
         switch_colors() 
         
@@ -197,7 +228,7 @@ class KritaTwitch(Extension):
         
     async def _reply_to_command(self, cmd: ChatCommand, message: str):
         await cmd.reply(f"(Krita 🖌️) {message}")
-
+        
     def setup(self):
         pass
 

@@ -4,5 +4,7 @@
     "twitch_chat_enabled": true,
     "twitch_chat_prefix": "?",
     "twitch_client_id": "",
-    "twitch_client_secret": ""
+    "twitch_client_secret": "",
+    "twitch_mods_can_admin": false,
+    "debug": false
 }
